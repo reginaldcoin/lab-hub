@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8.3 Virtual Labs — Link HUD</title>
+<style>
+  :root{
+    --bg:#0b1c33; --panel:#12294a; --panel2:#17355e; --line:#2c4f7e;
+    --ink:#eaf2ff; --dim:#9db8dd; --accent:#ffb454; --go:#3ecf7a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--ink);
+       font-family:"Segoe UI", system-ui, -apple-system, sans-serif;
+       min-height:100vh; padding:28px 22px 40px;}
+  header{max-width:1060px; margin:0 auto 26px;}
+  h1{font-size:clamp(25px, 3.4vw, 38px); font-weight:800; letter-spacing:.2px;}
+  h1 .sub{display:block; font-size:clamp(15px, 2vw, 20px); font-weight:600; color:var(--dim); margin-top:6px;}
+  main{max-width:1060px; margin:0 auto; display:grid;
+       grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:20px;}
+  .card{background:var(--panel); border:2px solid var(--line); border-radius:16px;
+        padding:24px 22px 22px; display:flex; flex-direction:column; gap:10px;}
+  .lesson{align-self:flex-start; background:var(--panel2); border:1px solid var(--line);
+          color:var(--accent); font-weight:700; font-size:14px; letter-spacing:1.2px;
+          text-transform:uppercase; padding:5px 12px; border-radius:999px;}
+  .card h2{font-size:27px; font-weight:800; line-height:1.15;}
+  .tests{color:var(--dim); font-size:17px; line-height:1.45; flex:1;}
+  .launch{display:block; text-align:center; text-decoration:none; cursor:pointer;
+          background:var(--go); color:#062b16; font-weight:800; font-size:21px;
+          border:none; border-radius:12px; padding:16px 10px; width:100%;}
+  .launch:hover,.launch:focus-visible{filter:brightness(1.1); outline:3px solid var(--ink); outline-offset:2px;}
+  .paste label{display:block; font-size:15px; color:var(--dim); margin-bottom:8px;}
+  .paste input{width:100%; font-size:16px; padding:13px 12px; border-radius:10px;
+               border:2px solid var(--line); background:#0a1830; color:var(--ink);}
+  .paste input:focus-visible{outline:3px solid var(--accent); outline-offset:1px;}
+  .paste button{margin-top:10px; width:100%; font-size:18px; font-weight:700; cursor:pointer;
+                background:var(--accent); color:#33200a; border:none; border-radius:10px; padding:13px;}
+  .paste button:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
+  .change{align-self:flex-end; background:none; border:none; color:var(--dim);
+          font-size:14px; cursor:pointer; text-decoration:underline; padding:4px 2px;}
+  .change:focus-visible{outline:2px solid var(--accent);}
+  footer{max-width:1060px; margin:26px auto 0; color:var(--dim); font-size:14px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>8.3 Forces at a Distance
+    <span class="sub">Virtual Labs — Demo HUD. Click a lab to open it in a new tab; this page stays put.</span>
+  </h1>
+</header>
+<main id="cards"></main>
+<footer>Links you paste are saved on this computer only, in this browser.</footer>
+
+<script>
+var LABS = [
+  { id:"magnet-distance", lesson:"Lesson 1",
+    name:"Magnet Distance Lab",
+    tests:"One pair of magnets, poles flippable. Tests how the force changes with distance: CLOSE vs FAR." },
+  { id:"electromagnet-coils", lesson:"Lesson 4",
+    name:"The Electromagnet Lab",
+    tests:"A coil of wire that wakes up when the current flows. Tests what makes an electromagnet stronger: more coils, more current." },
+  { id:"magnet-size", lesson:"Lesson 7",
+    name:"Magnet Size Lab",
+    tests:"Same setup, bigger magnet. Tests whether magnet size changes the force." }
+];
+
+function key(id){ return "labhud:" + id; }
+function getUrl(id){
+  try { return localStorage.getItem(key(id)) || ""; } catch(e){ return ""; }
+}
+function saveUrl(id, url){
+  try { localStorage.setItem(key(id), url); } catch(e){}
+}
+function clearUrl(id){
+  try { localStorage.removeItem(key(id)); } catch(e){}
+}
+
+function el(tag, cls, text){
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function render(){
+  var main = document.getElementById("cards");
+  main.innerHTML = "";
+  LABS.forEach(function(lab){
+    var card = el("section", "card");
+    card.appendChild(el("span", "lesson", lab.lesson));
+    card.appendChild(el("h2", null, lab.name));
+    card.appendChild(el("p", "tests", lab.tests));
+
+    var url = getUrl(lab.id);
+    if (url){
+      var a = el("a", "launch", "Open the lab →");
+      a.href = url; a.target = "_blank"; a.rel = "noopener";
+      card.appendChild(a);
+      var ch = el("button", "change", "change link");
+      ch.type = "button";
+      ch.addEventListener("click", function(){ clearUrl(lab.id); render(); });
+      card.appendChild(ch);
+    } else {
+      var wrap = el("div", "paste");
+      var inputId = "in-" + lab.id;
+      var label = el("label", null, "No link yet. Paste this lab's Apps Script link once:");
+      label.htmlFor = inputId;
+      var input = document.createElement("input");
+      input.id = inputId; input.type = "url";
+      input.placeholder = "https://script.google.com/macros/s/…/exec";
+      input.setAttribute("aria-label", lab.name + " link");
+      var btn = el("button", null, "Save link");
+      btn.type = "button";
+      function doSave(){
+        var v = input.value.trim();
+        if (v){ saveUrl(lab.id, v); render(); }
+        else { input.focus(); }
+      }
+      btn.addEventListener("click", doSave);
+      input.addEventListener("keydown", function(ev){ if (ev.key === "Enter"){ doSave(); } });
+      wrap.appendChild(label); wrap.appendChild(input); wrap.appendChild(btn);
+      card.appendChild(wrap);
+    }
+    main.appendChild(card);
+  });
+}
+render();
+</script>
+</body>
+</html>
