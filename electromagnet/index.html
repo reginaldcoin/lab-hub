@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Electromagnet Lab</title>
+<style>
+  :root{
+    --bg:#f4f7fb; --card:#ffffff; --ink:#16233c; --ink-soft:#44557a; --line:#c9d4e6;
+    --accent:#1663c7; --accent-dark:#0f4c9c; --accent-soft:#e3eefc;
+    --good:#177245; --good-soft:#e2f4e9; --warn:#9a5b00; --warn-soft:#fdf0d7;
+    --copper:#c96a1e; --copper-dark:#9c4f10; --track:#dde6f2;
+    --shadow:0 1px 4px rgba(22,35,60,.12); color-scheme:light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#101623; --card:#1a2334; --ink:#eef2fa; --ink-soft:#a9b8d4; --line:#36455f;
+      --accent:#5b9bf0; --accent-dark:#8dbcff; --accent-soft:#22344f; --good:#5cc98c; --good-soft:#1d3527;
+      --warn:#f0b95e; --warn-soft:#3d2f14; --track:#27334a; --shadow:0 1px 4px rgba(0,0,0,.4); }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;font-size:18px;line-height:1.35}
+  .page{max-width:1240px;margin:0 auto;padding:6px 14px 14px;display:flex;flex-direction:column;gap:8px}
+  header.top{text-align:center;padding:2px 0 0}
+  header.top h1{margin:0;font-size:clamp(25px,3.2vw,34px);font-weight:800;letter-spacing:-.01em}
+  header.top p{margin:2px 0 0;color:var(--ink-soft);font-size:16px;font-weight:600}
+  .card{background:var(--card);border:1.5px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:10px 16px}
+  .step-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .step-tag{background:var(--accent);color:#fff;font-weight:800;font-size:14px;letter-spacing:.08em;padding:3px 10px;border-radius:6px;white-space:nowrap}
+  @media (prefers-color-scheme: dark){ .step-tag{color:#0d1524} }
+  .step-head h2{margin:0;font-size:20px;font-weight:700}
+  .step-head .picked-note{color:var(--good);font-weight:700;font-size:16px}
+  .choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media (max-width:700px){ .choices{grid-template-columns:1fr} }
+  .choice{border:2px solid var(--line);border-radius:10px;padding:12px;background:var(--card);cursor:pointer;font-size:18px;font-weight:700;color:var(--ink);text-align:center}
+  .choice:hover{border-color:var(--accent)}
+  .choice.picked{border-color:var(--accent);background:var(--accent-soft)}
+  .lab-grid{display:grid;grid-template-columns:1fr 300px;gap:12px}
+  @media (max-width:900px){ .lab-grid{grid-template-columns:1fr} }
+  canvas{width:100%;height:auto;display:block;background:linear-gradient(180deg,#dfeaf8,#c9dcf2);border-radius:8px;border:1.5px solid var(--line)}
+  @media (prefers-color-scheme: dark){ canvas{background:linear-gradient(180deg,#16233c,#101a2e)} }
+  .controls{display:flex;flex-direction:column;gap:10px}
+  .ctl-label{font-size:14px;font-weight:800;letter-spacing:.07em;color:var(--ink-soft)}
+  .btn-row{display:flex;gap:6px;flex-wrap:wrap}
+  .cbtn{flex:1;min-width:56px;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:10px 4px;font-size:17px;font-weight:800;cursor:pointer}
+  .cbtn:hover{border-color:var(--accent)}
+  .cbtn.picked{border-color:var(--accent);background:var(--accent-soft)}
+  .obtn{flex:1;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:10px 4px;font-size:16px;font-weight:800;cursor:pointer}
+  .obtn.picked{border-color:var(--accent);background:var(--accent-soft)}
+  #powerBtn{border:none;border-radius:10px;padding:16px;font-size:21px;font-weight:900;letter-spacing:.05em;cursor:pointer;background:#b03a2e;color:#fff;box-shadow:var(--shadow)}
+  #powerBtn.on{background:var(--good)}
+  #powerBtn.locked{background:#7a8699;cursor:not-allowed;box-shadow:none}
+  #powerBtn:active{transform:scale(.99)}
+  .meter-wrap{background:var(--track);border-radius:8px;height:22px;overflow:hidden}
+  #meter{height:100%;width:0%;background:linear-gradient(90deg,var(--copper),#e8933c);transition:width .25s}
+  .meter-note{font-size:14px;color:var(--ink-soft);font-weight:600}
+  .targets{display:flex;flex-direction:column;gap:6px}
+  .target{border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;font-weight:700;display:flex;justify-content:space-between;gap:8px}
+  .target.done{border-color:var(--good);background:var(--good-soft)}
+  .target .badge{font-weight:900;color:var(--ink-soft)}
+  .target.done .badge{color:var(--good)}
+  table{width:100%;border-collapse:collapse;font-size:16px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:center}
+  th{background:var(--accent-soft);font-weight:800}
+  .empty-note{color:var(--ink-soft);font-size:15px;padding:6px 0}
+  #graphWrap{display:flex;align-items:flex-end;gap:18px;height:180px;padding:10px 6px 0;border-bottom:2px solid var(--line)}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+  .bar{width:70%;max-width:74px;background:linear-gradient(180deg,#e8933c,var(--copper));border-radius:6px 6px 0 0;min-height:2px;transition:height .4s}
+  .bar-val{font-weight:900;font-size:16px}
+  .bar-lab{font-size:14px;font-weight:700;color:var(--ink-soft)}
+  .takeaway{background:var(--warn-soft);border:1.5px solid var(--warn);border-radius:10px;padding:12px 16px;font-size:18px}
+  .takeaway b{font-size:19px}
+  .verdict{font-weight:900}
+  .verdict.right{color:var(--good)} .verdict.wrong{color:#b03a2e}
+  .row-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  #resetBtn{border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font-size:15px;font-weight:800;cursor:pointer}
+  .hint{font-size:15px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1>🧲 The Electromagnet Lab</h1>
+    <p>8.3 Lesson 4 · The speaker's secret: a coil of wire that wakes up</p>
+  </header>
+
+  <section class="card" id="predictCard">
+    <div class="step-head"><span class="step-tag">STEP 1</span><h2>Hypothesis</h2><span class="picked-note" id="predictNote"></span></div>
+    <p style="margin:0 0 8px">You wind copper wire around an iron nail and connect it to a battery. <b>Make a hypothesis: what happens to the magnet's strength when you add MORE coils?</b></p>
+    <div class="choices">
+      <button class="choice" data-pick="stronger">More coils → STRONGER magnet</button>
+      <button class="choice" data-pick="weaker">More coils → WEAKER magnet</button>
+      <button class="choice" data-pick="same">Coils make NO difference</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="step-head"><span class="step-tag">STEP 2</span><h2>Build it. Power it. Count.</h2></div>
+    <div class="lab-grid">
+      <div>
+        <canvas id="scene" width="760" height="430"></canvas>
+        <p class="hint" style="margin:6px 0 0">The pile holds 40 paperclips. The steel bolt is heavy: it only lifts for a strong magnet.</p>
+      </div>
+      <div class="controls">
+        <div>
+          <div class="ctl-label">COILS ON THE NAIL</div>
+          <div class="btn-row" id="coilRow">
+            <button class="cbtn" data-coils="5">5</button>
+            <button class="cbtn picked" data-coils="10">10</button>
+            <button class="cbtn" data-coils="15">15</button>
+            <button class="cbtn" data-coils="20">20</button>
+          </div>
+        </div>
+        <div>
+          <div class="ctl-label">TEST OBJECT</div>
+          <div class="btn-row">
+            <button class="obtn picked" data-obj="clips">📎 Paperclips</button>
+            <button class="obtn" data-obj="bolt">🔩 The Bolt</button>
+          </div>
+        </div>
+        <button id="powerBtn" class="locked">⚡ POWER: OFF</button>
+        <div class="hint" id="lockNote" style="margin-top:-4px">🔒 Locked. Pick a hypothesis in Step 1 first.</div>
+        <div>
+          <div class="ctl-label">FIELD STRENGTH</div>
+          <div class="meter-wrap"><div id="meter"></div></div>
+          <div class="meter-note" id="meterNote">Power is off. The nail is just a nail.</div>
+        </div>
+        <div class="targets">
+          <div class="target" id="t1"><span>🎯 Target 1: pick up 10+ clips</span><span class="badge">NOT YET</span></div>
+          <div class="target" id="t2"><span>🎯 Target 2: pick up 20+ clips</span><span class="badge">NOT YET</span></div>
+          <div class="target" id="t3"><span>👑 Boss: lift THE BOLT</span><span class="badge">NOT YET</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="step-head"><span class="step-tag">STEP 3</span><h2>Your data</h2></div>
+    <div id="tableWrap"><div class="empty-note">No trials yet. Set your coils, pick an object, and hit POWER.</div></div>
+    <h3 style="margin:12px 0 2px;font-size:17px">Best paperclip catch at each coil count</h3>
+    <div id="graphWrap"></div>
+    <p class="hint" style="margin:6px 0 0">Look at the bars. What is the pattern between coils and strength?</p>
+  </section>
+
+  <section class="takeaway" id="takeaway" style="display:none">
+    <div class="row-between">
+      <div>⚡ <b>The takeaway:</b> <span id="verdict" class="verdict"></span><br>
+      More coils = a stronger electromagnet. That is the speaker's secret: the music's signal switches the coil on, off, on, off, hundreds of times a second, and every switch pushes or pulls the cone. The cone dances. You hear sound.</div>
+      <button id="resetBtn">↺ Run it again</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var coils = 10, obj = "clips", power = false, trial = 0;
+  var prediction = null, best = {5:0,10:0,15:0,20:0}, boltLifted = false;
+  var anim = 0, animTarget = 0, caught = 0, boltLift = 0, boltWiggle = 0, boltUp = false;
+
+  var cvs = document.getElementById("scene"), ctx = cvs.getContext("2d");
+  var W = cvs.width, H = cvs.height;
+
+  // deterministic jitter so re-tests vary a little but fairly
+  function jitter(c, t){ var x = Math.sin(c*127.1 + t*311.7)*43758.5453; return Math.floor((x-Math.floor(x))*5)-2; }
+  function clipStrength(c, t){ return Math.max(1, Math.round(c*1.6) + jitter(c,t)); }
+
+  // paperclip pile positions (fixed scatter)
+  var pile = [];
+  (function(){ var s=42; function rnd(){ s=(s*9301+49297)%233280; return s/233280; }
+    for(var i=0;i<40;i++){ pile.push({x: 300+rnd()*300, y: 372+rnd()*34, r: (rnd()*40-20)}); } })();
+
+  function drawScene(){
+    ctx.clearRect(0,0,W,H);
+    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // bench
+    ctx.fillStyle = dark ? "#22344f" : "#8aa5c4";
+    ctx.fillRect(0, 392, W, 38);
+    ctx.fillStyle = dark ? "#a9b8d4" : "#44557a";
+    ctx.font = "700 14px sans-serif"; ctx.fillText("WORKBENCH", 14, 416);
+
+    // battery pack (left)
+    ctx.fillStyle = "#2b3a55"; ctx.fillRect(36, 250, 96, 120);
+    ctx.fillStyle = "#f4c542"; ctx.fillRect(70, 232, 28, 18);
+    ctx.fillStyle = "#fff"; ctx.font = "900 17px sans-serif"; ctx.fillText("BATTERY", 44, 296);
+    ctx.fillStyle = power ? "#5cc98c" : "#8899b5"; ctx.font = "800 14px sans-serif";
+    ctx.fillText(power ? "● FLOWING" : "○ OPEN", 48, 322);
+
+    // wires from battery to coil ends
+    ctx.strokeStyle = power ? "#e8933c" : "#5a6c8c"; ctx.lineWidth = 4; ctx.beginPath();
+    ctx.moveTo(132, 270); ctx.lineTo(196, 270); ctx.lineTo(196, 205); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(132, 350); ctx.lineTo(560, 350); ctx.lineTo(560, 205); ctx.stroke();
+
+    // field glow when powered
+    if(power){
+      var g = ctx.createRadialGradient(378,182,10,378,182,190);
+      g.addColorStop(0,"rgba(240,185,94,.45)"); g.addColorStop(1,"rgba(240,185,94,0)");
+      ctx.fillStyle = g; ctx.fillRect(160,0,440,392);
+    }
+
+    // nail (horizontal iron bar) centered ~ (200..556, 168..196)
+    ctx.fillStyle = "#9aa7ba"; ctx.fillRect(200, 168, 356, 28);
+    ctx.fillStyle = "#78869c"; ctx.beginPath(); ctx.moveTo(556,168); ctx.lineTo(592,182); ctx.lineTo(556,196); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#78869c"; ctx.fillRect(186, 160, 16, 44); // nail head
+
+    // coil windings: draw 'coils' loops spread over the nail body
+    var x0=232, x1=516, span=x1-x0;
+    ctx.strokeStyle = "#c96a1e"; ctx.lineWidth = 5;
+    for(var i=0;i<coils;i++){
+      var cx = x0 + (coils===1? span/2 : span*(i/(coils-1)));
+      ctx.beginPath(); ctx.ellipse(cx, 182, 7, 26, 0, 0, Math.PI*2); ctx.stroke();
+    }
+    ctx.fillStyle = dark ? "#eef2fa" : "#16233c"; ctx.font = "800 14px sans-serif";
+    ctx.fillText(coils + " coils", 348, 148);
+
+    // paperclips: some caught on the nail (arranged along its bottom), rest in pile
+    var caughtN = Math.round(anim * caught);
+    for(var i=0;i<40;i++){
+      var p = pile[i], x, y, rot = p.r;
+      if(i < caughtN){
+        var k = i % 18, row = Math.floor(i/18);
+        x = 250 + k*16 + (row%2)*7; y = 210 + row*17; rot = 12;
+      } else { x = p.x; y = p.y; }
+      drawClip(x, y, rot);
+    }
+
+    // the bolt (right side, boss object)
+    var bx = 640, by = 372 - boltLift*130 - (power && boltWiggle>0 ? Math.sin(Date.now()/28)*3 : 0);
+    ctx.save(); ctx.translate(bx, by); ctx.rotate(Math.PI/5);
+    ctx.fillStyle = "#6f7f99"; ctx.fillRect(-11, -30, 22, 60);
+    ctx.fillStyle = "#55657f"; ctx.fillRect(-19, -40, 38, 16);
+    ctx.restore();
+    ctx.fillStyle = dark ? "#eef2fa" : "#16233c"; ctx.font = "800 13px sans-serif";
+    ctx.fillText("THE BOLT", 606, 416 - boltLift*130 > 416 ? 416 : 416);
+    if(boltLift>0){ ctx.fillText("LIFTED!", 610, 210); }
+
+    // readout
+    ctx.font = "900 20px sans-serif"; ctx.fillStyle = dark ? "#eef2fa" : "#16233c";
+    if(power && obj==="clips"){ ctx.fillText("Caught: " + caughtN + " clips", 240, 44); }
+    if(power && obj==="bolt"){ ctx.fillText(boltLift>0.5 ? "THE BOLT IS UP!" : "The bolt strains...", 240, 44); }
+    requestAnimationFrame(drawScene);
+  }
+  function drawClip(x,y,rot){
+    ctx.save(); ctx.translate(x,y); ctx.rotate(rot*Math.PI/180);
+    ctx.strokeStyle = "#5a6c8c"; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.roundRect(-3,-9,6,18,3); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(-1.5,-5.5,3,11,1.5); ctx.stroke();
+    ctx.restore();
+  }
+
+  function animate(){
+    var diff = animTarget - anim;
+    if(Math.abs(diff) > 0.002){ anim += diff*0.09; }
+    if(boltUp && power){ if(boltLift < 1) boltLift = Math.min(1, boltLift + 0.03); }
+    else if(boltLift > 0){ boltLift = Math.max(0, boltLift - 0.06); }
+    requestAnimationFrame(animate);
+  }
+
+  // prediction
+  var note = document.getElementById("predictNote");
+  document.querySelectorAll(".choice").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".choice").forEach(function(x){ x.classList.remove("picked"); });
+      b.classList.add("picked"); prediction = b.getAttribute("data-pick");
+      note.textContent = "Hypothesis locked in.";
+      document.getElementById("powerBtn").classList.remove("locked");
+      document.getElementById("lockNote").style.display = "none";
+    });
+  });
+
+  // coil buttons
+  document.querySelectorAll(".cbtn").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".cbtn").forEach(function(x){ x.classList.remove("picked"); });
+      b.classList.add("picked"); coils = parseInt(b.getAttribute("data-coils"),10);
+      if(power) runTrial(true);
+    });
+  });
+  // object buttons
+  document.querySelectorAll(".obtn").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".obtn").forEach(function(x){ x.classList.remove("picked"); });
+      b.classList.add("picked"); obj = b.getAttribute("data-obj");
+      if(power) runTrial(true);
+    });
+  });
+
+  var powerBtn = document.getElementById("powerBtn"), meter = document.getElementById("meter"), meterNote = document.getElementById("meterNote");
+
+  function runTrial(silent){
+    trial++;
+    if(obj === "clips"){
+      boltUp = false;
+      caught = clipStrength(coils, trial);
+      if(caught > best[coils]) best[coils] = caught;
+      animTarget = 1;
+      logTrial(coils, "Paperclips", caught + " clips");
+      if(caught >= 10) markDone("t1");
+      if(caught >= 20) markDone("t2");
+    } else {
+      caught = 0; animTarget = 0;
+      if(coils >= 20){ boltLifted = true; boltUp = true; markDone("t3"); logTrial(coils, "The Bolt", "LIFTED 👑"); }
+      else { boltUp = false; boltWiggle = 1; logTrial(coils, "The Bolt", "Too heavy. It strains and stays."); }
+    }
+    meter.style.width = Math.round(coils/20*100) + "%";
+    meterNote.textContent = "Field on: the coil is a magnet right now (" + coils + " coils).";
+    renderGraph(); maybeTakeaway();
+  }
+
+  powerBtn.addEventListener("click", function(){
+    if(!power && prediction === null){
+      meterNote.textContent = "Not yet. Pick a hypothesis in Step 1 first, then power up.";
+      document.getElementById("predictCard").scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    power = !power;
+    powerBtn.textContent = power ? "⚡ POWER: ON" : "⚡ POWER: OFF";
+    powerBtn.classList.toggle("on", power);
+    if(power){ runTrial(false); }
+    else {
+      animTarget = 0; boltWiggle = 0; boltUp = false;
+      meter.style.width = "0%";
+      meterNote.textContent = "Power off: every clip drops. The magnet is gone. It was never the nail. It was the current.";
+    }
+  });
+
+  function markDone(id){
+    var t = document.getElementById(id);
+    if(!t.classList.contains("done")){ t.classList.add("done"); t.querySelector(".badge").textContent = "DONE ✓"; }
+  }
+
+  var rows = [];
+  function logTrial(c, o, result){
+    rows.push({n: rows.length+1, c:c, o:o, r:result});
+    var w = document.getElementById("tableWrap");
+    var html = "<table><tr><th>Trial</th><th>Coils</th><th>Object</th><th>Result</th></tr>";
+    rows.forEach(function(r){ html += "<tr><td>"+r.n+"</td><td>"+r.c+"</td><td>"+r.o+"</td><td>"+r.r+"</td></tr>"; });
+    w.innerHTML = html + "</table>";
+  }
+
+  function renderGraph(){
+    var gw = document.getElementById("graphWrap"), html = "", max = 36;
+    [5,10,15,20].forEach(function(c){
+      var v = best[c], h = Math.max(2, Math.round(v/max*130));
+      html += "<div class='bar-col'><div class='bar-val'>" + (v>0? v : "") + "</div><div class='bar' style='height:"+h+"px'></div><div class='bar-lab'>" + c + " coils</div></div>";
+    });
+    gw.innerHTML = html;
+  }
+
+  function maybeTakeaway(){
+    var tested = [5,10,15,20].filter(function(c){ return best[c]>0; }).length;
+    if(tested >= 2 || boltLifted){
+      var tk = document.getElementById("takeaway"), v = document.getElementById("verdict");
+      tk.style.display = "block";
+      if(prediction === null){ v.textContent = "You ran the tests without a hypothesis this time. Next run, write one down first: testing a claim is where the science lives."; v.className = "verdict"; }
+      else if(prediction === "stronger"){ v.textContent = "Your hypothesis matched the data. Nice call."; v.className = "verdict right"; }
+      else { v.textContent = "Your hypothesis didn't match the data, and that is completely okay. The point was never to guess right. The point is you made a claim and tested it. That is the science."; v.className = "verdict"; }
+    }
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    rows = []; best = {5:0,10:0,15:0,20:0}; boltLifted = false; trial = 0;
+    document.getElementById("tableWrap").innerHTML = "<div class='empty-note'>No trials yet. Set your coils, pick an object, and hit POWER.</div>";
+    ["t1","t2","t3"].forEach(function(id){ var t=document.getElementById(id); t.classList.remove("done"); t.querySelector(".badge").textContent="NOT YET"; });
+    document.getElementById("takeaway").style.display = "none";
+    renderGraph();
+  });
+
+  renderGraph();
+  drawScene();
+  animate();
+})();
+</script>
+</body>
+</html>

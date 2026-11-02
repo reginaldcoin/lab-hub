@@ -29,17 +29,6 @@
           background:var(--go); color:#062b16; font-weight:800; font-size:21px;
           border:none; border-radius:12px; padding:16px 10px; width:100%;}
   .launch:hover,.launch:focus-visible{filter:brightness(1.1); outline:3px solid var(--ink); outline-offset:2px;}
-  .paste label{display:block; font-size:15px; color:var(--dim); margin-bottom:8px;}
-  .paste input{width:100%; font-size:16px; padding:13px 12px; border-radius:10px;
-               border:2px solid var(--line); background:#0a1830; color:var(--ink);}
-  .paste input:focus-visible{outline:3px solid var(--accent); outline-offset:1px;}
-  .paste button{margin-top:10px; width:100%; font-size:18px; font-weight:700; cursor:pointer;
-                background:var(--accent); color:#33200a; border:none; border-radius:10px; padding:13px;}
-  .paste button:focus-visible{outline:3px solid var(--ink); outline-offset:2px;}
-  .change{align-self:flex-end; background:none; border:none; color:var(--dim);
-          font-size:14px; cursor:pointer; text-decoration:underline; padding:4px 2px;}
-  .change:focus-visible{outline:2px solid var(--accent);}
-  footer{max-width:1060px; margin:26px auto 0; color:var(--dim); font-size:14px;}
 </style>
 </head>
 <body>
@@ -49,31 +38,19 @@
   </h1>
 </header>
 <main id="cards"></main>
-<footer>Links you paste are saved on this computer only, in this browser.</footer>
 
 <script>
 var LABS = [
-  { id:"magnet-distance", lesson:"Lesson 1",
+  { path:"magnet-distance/", lesson:"Lesson 1",
     name:"Magnet Distance Lab",
     tests:"One pair of magnets, poles flippable. Tests how the force changes with distance: CLOSE vs FAR." },
-  { id:"electromagnet-coils", lesson:"Lesson 4",
+  { path:"electromagnet/", lesson:"Lesson 4",
     name:"The Electromagnet Lab",
     tests:"A coil of wire that wakes up when the current flows. Tests what makes an electromagnet stronger: more coils, more current." },
-  { id:"magnet-size", lesson:"Lesson 7",
+  { path:"magnet-size/", lesson:"Lesson 7",
     name:"Magnet Size Lab",
     tests:"Same setup, bigger magnet. Tests whether magnet size changes the force." }
 ];
-
-function key(id){ return "labhud:" + id; }
-function getUrl(id){
-  try { return localStorage.getItem(key(id)) || ""; } catch(e){ return ""; }
-}
-function saveUrl(id, url){
-  try { localStorage.setItem(key(id), url); } catch(e){}
-}
-function clearUrl(id){
-  try { localStorage.removeItem(key(id)); } catch(e){}
-}
 
 function el(tag, cls, text){
   var n = document.createElement(tag);
@@ -90,37 +67,9 @@ function render(){
     card.appendChild(el("span", "lesson", lab.lesson));
     card.appendChild(el("h2", null, lab.name));
     card.appendChild(el("p", "tests", lab.tests));
-
-    var url = getUrl(lab.id);
-    if (url){
-      var a = el("a", "launch", "Open the lab →");
-      a.href = url; a.target = "_blank"; a.rel = "noopener";
-      card.appendChild(a);
-      var ch = el("button", "change", "change link");
-      ch.type = "button";
-      ch.addEventListener("click", function(){ clearUrl(lab.id); render(); });
-      card.appendChild(ch);
-    } else {
-      var wrap = el("div", "paste");
-      var inputId = "in-" + lab.id;
-      var label = el("label", null, "No link yet. Paste this lab's Apps Script link once:");
-      label.htmlFor = inputId;
-      var input = document.createElement("input");
-      input.id = inputId; input.type = "url";
-      input.placeholder = "https://script.google.com/macros/s/…/exec";
-      input.setAttribute("aria-label", lab.name + " link");
-      var btn = el("button", null, "Save link");
-      btn.type = "button";
-      function doSave(){
-        var v = input.value.trim();
-        if (v){ saveUrl(lab.id, v); render(); }
-        else { input.focus(); }
-      }
-      btn.addEventListener("click", doSave);
-      input.addEventListener("keydown", function(ev){ if (ev.key === "Enter"){ doSave(); } });
-      wrap.appendChild(label); wrap.appendChild(input); wrap.appendChild(btn);
-      card.appendChild(wrap);
-    }
+    var a = el("a", "launch", "Open the lab →");
+    a.href = lab.path; a.target = "_blank"; a.rel = "noopener";
+    card.appendChild(a);
     main.appendChild(card);
   });
 }
