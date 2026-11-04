@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Gravity Lab</title>
+<style>
+  :root{
+    --bg:#f4f7fb; --card:#ffffff; --ink:#16233c; --ink-soft:#44557a; --line:#c9d4e6;
+    --accent:#1663c7; --accent-dark:#0f4c9c; --accent-soft:#e3eefc;
+    --good:#177245; --good-soft:#e2f4e9; --warn:#9a5b00; --warn-soft:#fdf0d7;
+    --copper:#c96a1e; --copper-dark:#9c4f10; --track:#dde6f2;
+    --shadow:0 1px 4px rgba(22,35,60,.12); color-scheme:light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#101623; --card:#1a2334; --ink:#eef2fa; --ink-soft:#a9b8d4; --line:#36455f;
+      --accent:#5b9bf0; --accent-dark:#8dbcff; --accent-soft:#22344f; --good:#5cc98c; --good-soft:#1d3527;
+      --warn:#f0b95e; --warn-soft:#3d2f14; --track:#27334a; --shadow:0 1px 4px rgba(0,0,0,.4); }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;font-size:18px;line-height:1.35}
+  .page{max-width:1240px;margin:0 auto;padding:6px 14px 14px;display:flex;flex-direction:column;gap:8px}
+  header.top{text-align:center;padding:2px 0 0}
+  header.top h1{margin:0;font-size:clamp(25px,3.2vw,34px);font-weight:800;letter-spacing:-.01em}
+  header.top p{margin:2px 0 0;color:var(--ink-soft);font-size:16px;font-weight:600}
+  .card{background:var(--card);border:1.5px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:10px 16px}
+  .step-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .step-tag{background:var(--accent);color:#fff;font-weight:800;font-size:14px;letter-spacing:.08em;padding:3px 10px;border-radius:6px;white-space:nowrap}
+  @media (prefers-color-scheme: dark){ .step-tag{color:#0d1524} }
+  .step-head h2{margin:0;font-size:20px;font-weight:700}
+  .step-head .picked-note{color:var(--good);font-weight:700;font-size:16px}
+  .choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  @media (max-width:700px){ .choices{grid-template-columns:1fr} }
+  .choice{border:2px solid var(--line);border-radius:10px;padding:12px;background:var(--card);cursor:pointer;font-size:18px;font-weight:700;color:var(--ink);text-align:center}
+  .choice:hover{border-color:var(--accent)}
+  .choice.picked{border-color:var(--accent);background:var(--accent-soft)}
+  .lab-grid{display:grid;grid-template-columns:1fr 300px;gap:12px}
+  @media (max-width:900px){ .lab-grid{grid-template-columns:1fr} }
+  canvas{width:100%;height:auto;display:block;background:linear-gradient(180deg,#dfeaf8,#c9dcf2);border-radius:8px;border:1.5px solid var(--line)}
+  @media (prefers-color-scheme: dark){ canvas{background:linear-gradient(180deg,#16233c,#101a2e)} }
+  .controls{display:flex;flex-direction:column;gap:10px}
+  .ctl-label{font-size:14px;font-weight:800;letter-spacing:.07em;color:var(--ink-soft)}
+  .btn-row{display:flex;gap:6px;flex-wrap:wrap}
+  .cbtn{flex:1;min-width:56px;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:10px 4px;font-size:17px;font-weight:800;cursor:pointer}
+  .cbtn:hover{border-color:var(--accent)}
+  .cbtn.picked{border-color:var(--accent);background:var(--accent-soft)}
+  #measureBtn{border:none;border-radius:10px;padding:16px;font-size:21px;font-weight:900;letter-spacing:.05em;cursor:pointer;background:#b03a2e;color:#fff;box-shadow:var(--shadow)}
+  #measureBtn.on{background:var(--good)}
+  #measureBtn.locked{background:#7a8699;cursor:not-allowed;box-shadow:none}
+  #measureBtn:active{transform:scale(.99)}
+  .meter-wrap{background:var(--track);border-radius:8px;height:22px;overflow:hidden}
+  #meter{height:100%;width:0%;background:linear-gradient(90deg,var(--copper),#e8933c);transition:width .25s}
+  .meter-note{font-size:14px;color:var(--ink-soft);font-weight:600}
+  .targets{display:flex;flex-direction:column;gap:6px}
+  .target{border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:16px;font-weight:700;display:flex;justify-content:space-between;gap:8px}
+  .target.done{border-color:var(--good);background:var(--good-soft)}
+  .target .badge{font-weight:900;color:var(--ink-soft)}
+  .target.done .badge{color:var(--good)}
+  table{width:100%;border-collapse:collapse;font-size:16px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:center}
+  th{background:var(--accent-soft);font-weight:800}
+  .empty-note{color:var(--ink-soft);font-size:15px;padding:6px 0}
+  #graphWrap{display:flex;align-items:flex-end;gap:18px;height:180px;padding:10px 6px 0;border-bottom:2px solid var(--line)}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+  .bar{width:70%;max-width:74px;background:linear-gradient(180deg,#e8933c,var(--copper));border-radius:6px 6px 0 0;min-height:2px;transition:height .4s}
+  .bar.empty{background:none;border:1.5px dashed var(--line)}
+  .bar-val.notyet{font-size:12px;font-weight:700;color:var(--ink-soft);text-align:center;line-height:1.25}
+  .bar-val{font-weight:900;font-size:16px}
+  .bar-lab{font-size:14px;font-weight:700;color:var(--ink-soft)}
+  .takeaway{background:var(--warn-soft);border:1.5px solid var(--warn);border-radius:10px;padding:12px 16px;font-size:18px}
+  .takeaway b{font-size:19px}
+  .verdict{font-weight:900}
+  .verdict.right{color:var(--good)} .verdict.wrong{color:#b03a2e}
+  .combo-map{border-collapse:separate;border-spacing:5px;width:auto;margin:2px 0 0}
+  .combo-map th,.combo-map td{border:none;padding:0}
+  .combo-map .cm-corner,.combo-map .cm-head{font-size:13px;font-weight:800;color:var(--ink-soft);text-align:center;padding:2px 4px}
+  .combo-map .cm-rowhead{font-size:13px;font-weight:800;color:var(--ink-soft);text-align:right;padding:2px 6px 2px 0;white-space:nowrap}
+  .cm-cell{width:104px;height:38px;border:2px dashed var(--line);border-radius:8px;text-align:center;vertical-align:middle;font-size:13px;font-weight:700;color:var(--ink-soft);background:var(--card)}
+  .cm-cell.lit{border:2px solid var(--good);background:var(--good-soft);color:var(--good);font-weight:900}
+  .combo-count{font-size:17px;font-weight:900;margin:8px 0 0}
+  #nameInput{width:100%;max-width:420px;border:2px solid var(--line);border-radius:8px;padding:11px;font-size:18px;font-weight:700;color:var(--ink);background:var(--card)}
+  #nameInput:disabled{opacity:.5}
+  #sendBtn{border:none;border-radius:10px;padding:13px 22px;font-size:19px;font-weight:900;letter-spacing:.03em;cursor:pointer;background:var(--accent);color:#fff;box-shadow:var(--shadow)}
+  #sendBtn:disabled{background:#7a8699;cursor:not-allowed;box-shadow:none}
+  #sendBtn:active{transform:scale(.99)}
+  @media (prefers-color-scheme: dark){ #sendBtn{color:#0d1524} }
+  .send-status{font-size:16px;font-weight:700;margin:8px 0 0}
+  .send-status.err{color:#b03a2e}
+  .teacher-screen{border:2px solid var(--warn);background:var(--warn-soft);border-radius:10px;padding:12px 16px;font-size:18px;margin-top:10px}
+  .row-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  #resetBtn{border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;font-size:15px;font-weight:800;cursor:pointer}
+  .hint{font-size:15px;color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1>🌍 The Gravity Lab</h1>
+    <p>8.3 Lesson 10 · The pull between masses: it never pushes, and it never touches</p>
+  </header>
+
+  <section class="card" id="predictCard">
+    <div class="step-head"><span class="step-tag">STEP 1</span><h2>Hypothesis</h2><span class="picked-note" id="predictNote"></span></div>
+    <p style="margin:0 0 8px">A moon floats near a planet. The planet's gravity pulls on the moon. <b>Make a hypothesis: what happens to the pull when the planet has MORE mass?</b></p>
+    <div class="choices">
+      <button class="choice" data-pick="stronger">More mass → STRONGER pull</button>
+      <button class="choice" data-pick="weaker">More mass → WEAKER pull</button>
+      <button class="choice" data-pick="same">Mass makes NO difference</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="step-head"><span class="step-tag">STEP 2</span><h2>Set it. Measure the pull.</h2></div>
+    <div class="lab-grid">
+      <div>
+        <canvas id="scene" width="760" height="430"></canvas>
+        <p class="hint" style="margin:6px 0 0">The moon's mass never changes. Only the planet's mass and the distance change. A fair test changes one thing at a time.</p>
+      </div>
+      <div class="controls">
+        <div>
+          <div class="ctl-label">PLANET MASS</div>
+          <div class="btn-row" id="massRow">
+            <button class="cbtn" data-mass="1">Mass 1</button>
+            <button class="cbtn picked" data-mass="2">Mass 2</button>
+            <button class="cbtn" data-mass="4">Mass 4</button>
+          </div>
+        </div>
+        <div>
+          <div class="ctl-label">DISTANCE</div>
+          <div class="btn-row" id="distRow">
+            <button class="cbtn picked" data-dist="1" data-dname="CLOSE">CLOSE</button>
+            <button class="cbtn" data-dist="2" data-dname="MEDIUM">MEDIUM</button>
+            <button class="cbtn" data-dist="3" data-dname="FAR">FAR</button>
+          </div>
+        </div>
+        <button id="measureBtn" class="locked">🎯 MEASURE THE PULL</button>
+        <div class="hint" id="lockNote" style="margin-top:-4px">🔒 Locked. Pick a hypothesis in Step 1 first.</div>
+        <div>
+          <div class="ctl-label">PULL STRENGTH</div>
+          <div class="meter-wrap"><div id="meter"></div></div>
+          <div class="meter-note" id="meterNote">Nothing measured yet. Set the planet, then measure.</div>
+        </div>
+        <div class="targets">
+          <div class="target" id="t1"><span>🎯 Target 1: measure a pull of 30+ units</span><span class="badge">NOT YET</span></div>
+          <div class="target" id="t2"><span>🎯 Target 2: measure a pull of 70+ units</span><span class="badge">NOT YET</span></div>
+          <div class="target" id="t3"><span>👑 Boss: find the weakest pull, 8 units or less</span><span class="badge">NOT YET</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="step-head"><span class="step-tag">STEP 3</span><h2>Your data</h2></div>
+    <div id="tableWrap"><div class="empty-note">No trials yet. Set the mass and distance, and hit MEASURE THE PULL.</div></div>
+    <h3 style="margin:14px 0 2px;font-size:17px">Combo map: every mass × every distance</h3>
+    <p class="hint" style="margin:0 0 4px">There are <b>9 combos</b> in this lab: 3 planet masses times 3 distances. A square lights up the first time you measure that exact combo. Measuring the same combo again does not light a new square. The lab is complete when all 9 squares are lit.</p>
+    <table class="combo-map" id="comboMap">
+      <tr><td class="cm-corner"></td><th class="cm-head">CLOSE</th><th class="cm-head">MEDIUM</th><th class="cm-head">FAR</th></tr>
+      <tr><th class="cm-rowhead">Mass 1</th><td class="cm-cell" id="cm-1-1">Mass 1 · CLOSE</td><td class="cm-cell" id="cm-1-2">Mass 1 · MEDIUM</td><td class="cm-cell" id="cm-1-3">Mass 1 · FAR</td></tr>
+      <tr><th class="cm-rowhead">Mass 2</th><td class="cm-cell" id="cm-2-1">Mass 2 · CLOSE</td><td class="cm-cell" id="cm-2-2">Mass 2 · MEDIUM</td><td class="cm-cell" id="cm-2-3">Mass 2 · FAR</td></tr>
+      <tr><th class="cm-rowhead">Mass 4</th><td class="cm-cell" id="cm-4-1">Mass 4 · CLOSE</td><td class="cm-cell" id="cm-4-2">Mass 4 · MEDIUM</td><td class="cm-cell" id="cm-4-3">Mass 4 · FAR</td></tr>
+    </table>
+    <p class="combo-count" id="comboCount">0 of 9 combos measured</p>
+    <h3 style="margin:12px 0 2px;font-size:17px">Pull at CLOSE for each planet mass</h3>
+    <div id="graphWrap"></div>
+    <p class="hint" style="margin:6px 0 0">Look at the bars. What is the pattern between planet mass and pull?</p>
+  </section>
+
+  <section class="card" id="finishCard">
+    <div class="step-head"><span class="step-tag">STEP 4</span><h2>Send your completion to your teacher</h2></div>
+    <p id="finishLock" style="margin:0 0 8px">🔒 Locked. This step opens when your combo map reaches <b>9 of 9 combos measured</b>. Check the map in Step 3 to see which combos you still need.</p>
+    <div id="finishForm" style="display:none">
+      <p style="margin:0 0 8px">🎉 All 9 combos measured. Type your name exactly as it appears on the class roster, then press SEND. Your teacher gets your name, your 9 of 9 combos, and how many trials you ran.</p>
+      <div class="btn-row" style="align-items:center">
+        <input id="nameInput" type="text" placeholder="Enter your name" autocomplete="name">
+        <button id="sendBtn">✉ SEND TO TEACHER</button>
+      </div>
+      <p class="send-status" id="sendStatus"></p>
+      <div class="teacher-screen" id="teacherScreen" style="display:none"></div>
+    </div>
+  </section>
+
+  <section class="takeaway" id="takeaway" style="display:none">
+    <div class="row-between">
+      <div>🌍 <b>The takeaway:</b> <span id="verdict" class="verdict"></span><br>
+      Gravity is a pull between any two objects with mass. It only pulls, it never pushes, and it works without touching. More mass means a stronger pull. Farther apart means a weaker pull, and the pull drops off fast: doubling the distance cut it to one fourth. Earth pulls on you because Earth has an enormous mass. The Moon has less mass than Earth, so its pull is weaker: on the Moon your weight would drop, but your mass would stay exactly the same.</div>
+      <button id="resetBtn">↺ Run it again</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var mass = 2, dist = 1, dname = "CLOSE", trial = 0, lastPull = null;
+  var prediction = null, closePull = {1:null, 2:null, 4:null};
+  var combosDone = {}, comboCount = 0, reportSent = false;
+  var tug = 0, tugTarget = 0;
+
+  var cvs = document.getElementById("scene"), ctx = cvs.getContext("2d");
+  var W = cvs.width, H = cvs.height;
+
+  // the model: pull = 36 x planet mass / (distance step)^2  -- doubling distance quarters the pull
+  function pullFor(m, d){ return Math.round(36 * m / (d * d)); }
+
+  // star scatter (fixed, seeded so it never flickers)
+  var stars = [];
+  (function(){ var s=7; function rnd(){ s=(s*9301+49297)%233280; return s/233280; }
+    for(var i=0;i<70;i++){ stars.push({x: rnd()*W, y: rnd()*H, r: rnd()*1.6+0.4}); } })();
+
+  var RADII = {1:42, 2:56, 4:78};
+  var GAPS  = {1:60, 2:150, 3:240};
+
+  function drawScene(){
+    ctx.clearRect(0,0,W,H);
+    var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var ink = dark ? "#eef2fa" : "#16233c";
+
+    // stars
+    ctx.fillStyle = dark ? "#8dbcff" : "#7d97bd";
+    stars.forEach(function(st){ ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, Math.PI*2); ctx.fill(); });
+
+    var pcx = 185, pcy = 205, r = RADII[mass];
+    var gap = GAPS[dist];
+    var ox = pcx + r + gap - tug;   // moon center x (tug pulls it toward the planet)
+    var oy = pcy;
+
+    // distance bracket
+    ctx.strokeStyle = dark ? "#a9b8d4" : "#44557a"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(pcx, 348); ctx.lineTo(ox, 348); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pcx, 340); ctx.lineTo(pcx, 356); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ox, 340); ctx.lineTo(ox, 356); ctx.stroke();
+    ctx.fillStyle = ink; ctx.font = "800 14px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("DISTANCE: " + dname, (pcx+ox)/2, 374);
+    ctx.textAlign = "left";
+
+    // pull arrows: each body pulls the other toward itself (both arrows point inward)
+    if(lastPull !== null){
+      var L = Math.max(14, Math.min(58, 10 + lastPull*0.34));
+      ctx.strokeStyle = "#c96a1e"; ctx.fillStyle = "#c96a1e"; ctx.lineWidth = 5;
+      // arrow on the moon, pointing left toward the planet
+      var ax = ox - 24;
+      ctx.beginPath(); ctx.moveTo(ax, oy); ctx.lineTo(ax - L, oy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ax - L, oy); ctx.lineTo(ax - L + 11, oy - 7); ctx.lineTo(ax - L + 11, oy + 7); ctx.closePath(); ctx.fill();
+      // arrow on the planet, pointing right toward the moon
+      var bx = pcx + r + 6;
+      ctx.beginPath(); ctx.moveTo(bx, oy); ctx.lineTo(bx + L, oy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx + L, oy); ctx.lineTo(bx + L - 11, oy - 7); ctx.lineTo(bx + L - 11, oy + 7); ctx.closePath(); ctx.fill();
+    }
+
+    // planet
+    var g = ctx.createRadialGradient(pcx - r*0.35, pcy - r*0.35, r*0.15, pcx, pcy, r);
+    g.addColorStop(0, "#7fd4a8"); g.addColorStop(0.55, "#2e9e6b"); g.addColorStop(1, "#1c6b45");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(pcx, pcy, r, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = dark ? "#a9b8d4" : "#44557a"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = ink; ctx.font = "800 14px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("PLANET", pcx, pcy + r + 22);
+    ctx.fillText("Mass " + mass, pcx, pcy + r + 42);
+    ctx.textAlign = "left";
+
+    // the moon (gray, with craters)
+    var mr = 19;
+    var mg = ctx.createRadialGradient(ox - mr*0.35, oy - mr*0.35, mr*0.15, ox, oy, mr);
+    mg.addColorStop(0, "#e8ecf2"); mg.addColorStop(0.55, "#b9c2d0"); mg.addColorStop(1, "#8b96a8");
+    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(ox, oy, mr, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = "rgba(90,108,140,.45)";
+    [[-6,-4,4.5],[5,6,3.4],[7,-7,2.6],[-3,9,2.4]].forEach(function(c){
+      ctx.beginPath(); ctx.arc(ox + c[0], oy + c[1], c[2], 0, Math.PI*2); ctx.fill();
+    });
+    ctx.strokeStyle = "#5a6c8c"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ox, oy, mr, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = ink; ctx.font = "800 13px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("MOON", ox, oy + 34);
+    ctx.fillText("(mass never changes)", ox, oy + 52);
+    ctx.textAlign = "left";
+
+    // readout
+    ctx.font = "900 21px sans-serif"; ctx.fillStyle = ink; ctx.textAlign = "center";
+    if(lastPull !== null){ ctx.fillText("Pull: " + lastPull + " units", W/2, 42); }
+    else { ctx.font = "800 17px sans-serif"; ctx.fillText("Set the mass and distance, then MEASURE THE PULL", W/2, 42); }
+    ctx.textAlign = "left";
+
+    requestAnimationFrame(drawScene);
+  }
+
+  function animate(){
+    var diff = tugTarget - tug;
+    if(Math.abs(diff) > 0.05){ tug += diff*0.08; }
+    requestAnimationFrame(animate);
+  }
+
+  // prediction
+  var note = document.getElementById("predictNote");
+  document.querySelectorAll(".choice").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".choice").forEach(function(x){ x.classList.remove("picked"); });
+      b.classList.add("picked"); prediction = b.getAttribute("data-pick");
+      note.textContent = "Hypothesis locked in.";
+      document.getElementById("measureBtn").classList.remove("locked");
+      document.getElementById("lockNote").style.display = "none";
+    });
+  });
+
+  // mass buttons
+  document.querySelectorAll("#massRow .cbtn").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll("#massRow .cbtn").forEach(function(x){ x.classList.remove("picked"); });
+      b.classList.add("picked"); mass = parseInt(b.getAttribute("data-mass"),10);
+      lastPull = null; tugTarget = 0;
+      document.getElementById("meter").style.width = "0%";
+      document.getElementById("meterNote").textContent = "Settings changed. Measure again to see the new pull.";
+    });
+  });
+  // distance buttons
+  document.querySelectorAll("#distRow .cbtn").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll("#distRow .cbtn").forEach(function(x){ x.classList.remove("picked"); });
+      b.classList.add("picked"); dist = parseInt(b.getAttribute("data-dist"),10);
+      dname = b.getAttribute("data-dname");
+      lastPull = null; tugTarget = 0;
+      document.getElementById("meter").style.width = "0%";
+      document.getElementById("meterNote").textContent = "Settings changed. Measure again to see the new pull.";
+    });
+  });
+
+  var measureBtn = document.getElementById("measureBtn"), meter = document.getElementById("meter"), meterNote = document.getElementById("meterNote");
+
+  function runTrial(){
+    trial++;
+    var pull = pullFor(mass, dist);
+    lastPull = pull;
+    if(dist === 1) closePull[mass] = pull;
+    tugTarget = Math.min(GAPS[dist]*0.45, pull*0.45);
+    logTrial(mass, dname, pull);
+    markCombo(mass, dist);
+    if(pull >= 30) markDone("t1");
+    if(pull >= 70) markDone("t2");
+    if(pull <= 8) markDone("t3");
+    meter.style.width = Math.round(pull/144*100) + "%";
+    meterNote.textContent = "Mass " + mass + " at " + dname + ": the pull is " + pull + " units. Gravity only ever pulls: watch the moon tug toward the planet.";
+    measureBtn.textContent = "🎯 MEASURE AGAIN";
+    measureBtn.classList.add("on");
+    renderGraph(); maybeTakeaway();
+  }
+
+  measureBtn.addEventListener("click", function(){
+    if(prediction === null){
+      meterNote.textContent = "Not yet. Pick a hypothesis in Step 1 first, then measure.";
+      document.getElementById("predictCard").scrollIntoView({behavior:"smooth", block:"center"});
+      return;
+    }
+    runTrial();
+  });
+
+  function markDone(id){
+    var t = document.getElementById(id);
+    if(!t.classList.contains("done")){ t.classList.add("done"); t.querySelector(".badge").textContent = "DONE ✓"; }
+  }
+
+  // Combo coverage: a combo is one planet mass at one distance. First measurement
+  // lights its square and advances the count; repeats change nothing. The lab is
+  // complete at 9 of 9 unique combos, and only then does Step 4 unlock.
+  function markCombo(m, d){
+    var key = m + "-" + d;
+    if(combosDone[key]) return;
+    combosDone[key] = true; comboCount++;
+    var cell = document.getElementById("cm-" + key);
+    if(cell){ cell.classList.add("lit"); cell.textContent = "✓ " + cell.textContent; }
+    document.getElementById("comboCount").textContent = comboCount + " of 9 combos measured";
+    if(comboCount === 9) unlockFinish();
+  }
+
+  function unlockFinish(){
+    document.getElementById("finishLock").style.display = "none";
+    document.getElementById("finishForm").style.display = "block";
+  }
+
+  function showTeacherScreen(payload, whenText){
+    var ts = document.getElementById("teacherScreen");
+    ts.style.display = "block";
+    ts.innerHTML = "<b>Screenshot this screen, and upload the screenshot with your worksheet as your assignment.</b><br>" +
+      "Name: <b>" + payload.name + "</b><br>" +
+      "Lab complete: <b>" + payload.combos + " combos</b><br>" +
+      "Trials run: <b>" + payload.trials + "</b><br>" +
+      "Finished: <b>" + whenText + "</b>";
+  }
+
+  document.getElementById("sendBtn").addEventListener("click", function(){
+    if(reportSent) return;
+    var status = document.getElementById("sendStatus");
+    var name = document.getElementById("nameInput").value.replace(/^\s+|\s+$/g, "");
+    if(!name){
+      status.textContent = "Type your name first, then press SEND.";
+      status.className = "send-status err";
+      document.getElementById("nameInput").focus();
+      return;
+    }
+    var now = new Date();
+    var payload = { name: name, combos: comboCount + "/9", combosCovered: comboCount, totalCombos: 9,
+                    trials: rows.length, timestamp: now.toISOString() };
+    if(window.google && google.script && google.script.run){
+      status.textContent = "Sending...";
+      status.className = "send-status";
+      google.script.run
+        .withSuccessHandler(function(){
+          reportSent = true;
+          document.getElementById("sendBtn").disabled = true;
+          document.getElementById("nameInput").disabled = true;
+          status.textContent = "✓ Sent to your teacher. You are done.";
+          status.className = "send-status";
+        })
+        .withFailureHandler(function(){
+          status.textContent = "The send did not go through. Do not close this page: show the panel below to your teacher instead.";
+          status.className = "send-status err";
+          showTeacherScreen(payload, now.toLocaleString());
+        })
+        .recordCompletion(payload);
+    } else {
+      // Opened as a plain file (no Apps Script): never fail silently. The student
+      // shows the completion panel to the teacher in person.
+      status.textContent = "This copy of the lab is not connected to your teacher's results sheet, so nothing was sent online.";
+      status.className = "send-status err";
+      showTeacherScreen(payload, now.toLocaleString());
+    }
+  });
+
+  var rows = [];
+  function logTrial(m, d, pull){
+    rows.push({n: rows.length+1, m:m, d:d, p:pull});
+    var w = document.getElementById("tableWrap");
+    var html = "<table><tr><th>Trial</th><th>Planet mass</th><th>Distance</th><th>Pull (units)</th></tr>";
+    rows.forEach(function(r){ html += "<tr><td>"+r.n+"</td><td>"+r.m+"</td><td>"+r.d+"</td><td>"+r.p+"</td></tr>"; });
+    w.innerHTML = html + "</table>";
+  }
+
+  // Fair-test chart: every bar is the pull at the SAME distance (CLOSE), so the only
+  // thing that differs bar to bar is the planet mass. A mass with no CLOSE trial yet
+  // gets an empty slot, never a bar borrowed from a different distance.
+  function renderGraph(){
+    var gw = document.getElementById("graphWrap"), html = "", max = 144;
+    [1,2,4].forEach(function(m){
+      var v = closePull[m];
+      if(v === null){
+        html += "<div class='bar-col'><div class='bar-val notyet'>not measured<br>at CLOSE yet</div><div class='bar empty' style='height:2px'></div><div class='bar-lab'>Mass " + m + "</div></div>";
+      } else {
+        var h = Math.max(2, Math.round(v/max*130));
+        html += "<div class='bar-col'><div class='bar-val'>" + v + "</div><div class='bar' style='height:"+h+"px'></div><div class='bar-lab'>Mass " + m + "</div></div>";
+      }
+    });
+    gw.innerHTML = html;
+  }
+
+  function maybeTakeaway(){
+    var tested = [1,2,4].filter(function(m){ return rows.some(function(r){ return r.m === m; }); }).length;
+    if(tested >= 2 || rows.length >= 6){
+      var tk = document.getElementById("takeaway"), v = document.getElementById("verdict");
+      tk.style.display = "block";
+      if(prediction === null){ v.textContent = "You ran the tests without a hypothesis this time. Next run, write one down first: testing a claim is where the science lives."; v.className = "verdict"; }
+      else if(prediction === "stronger"){ v.textContent = "Your hypothesis matched the data. Nice call."; v.className = "verdict right"; }
+      else { v.textContent = "Your hypothesis didn't match the data, and that is completely okay. The point was never to guess right. The point is you made a claim and tested it. That is the science."; v.className = "verdict"; }
+    }
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    rows = []; closePull = {1:null, 2:null, 4:null}; trial = 0; lastPull = null; tugTarget = 0;
+    combosDone = {}; comboCount = 0; reportSent = false;
+    [1,2,4].forEach(function(m){ [1,2,3].forEach(function(d){
+      var cell = document.getElementById("cm-" + m + "-" + d);
+      if(cell){ cell.classList.remove("lit"); cell.textContent = cell.textContent.replace(/^✓ /, ""); }
+    }); });
+    document.getElementById("comboCount").textContent = "0 of 9 combos measured";
+    document.getElementById("finishLock").style.display = "block";
+    document.getElementById("finishForm").style.display = "none";
+    document.getElementById("nameInput").value = "";
+    document.getElementById("nameInput").disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+    document.getElementById("sendStatus").textContent = "";
+    document.getElementById("teacherScreen").style.display = "none";
+    document.getElementById("tableWrap").innerHTML = "<div class='empty-note'>No trials yet. Set the mass and distance, and hit MEASURE THE PULL.</div>";
+    ["t1","t2","t3"].forEach(function(id){ var t=document.getElementById(id); t.classList.remove("done"); t.querySelector(".badge").textContent="NOT YET"; });
+    document.getElementById("takeaway").style.display = "none";
+    measureBtn.textContent = "🎯 MEASURE THE PULL";
+    measureBtn.classList.remove("on");
+    meter.style.width = "0%";
+    meterNote.textContent = "Nothing measured yet. Set the planet, then measure.";
+    renderGraph();
+  });
+
+  renderGraph();
+  drawScene();
+  animate();
+})();
+</script>
+</body>
+</html>
