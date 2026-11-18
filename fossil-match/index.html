@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fossil Match Lab</title>
+<style>
+  :root{
+    --bg:#ffffff; --ink:#16233c; --ink-soft:#44557a; --line:#c9d4e6;
+    --accent:#1663c7; --accent-dark:#0f4c9c; --accent-soft:#e3eefc;
+    --good:#177245; --good-soft:#e2f4e9; --bad:#b03a2e;
+    color-scheme:light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#101623; --ink:#eef2fa; --ink-soft:#a9b8d4; --line:#36455f;
+      --accent:#5b9bf0; --accent-dark:#8dbcff; --accent-soft:#22344f; --good:#5cc98c; --good-soft:#1d3527; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;font-size:18px;line-height:1.4}
+  .page{max-width:1024px;margin:0 auto;padding:10px 16px 28px}
+  header.top h1{margin:6px 0 0;font-size:30px;font-weight:800}
+  header.top p{margin:2px 0 0;color:var(--ink-soft);font-size:16px;font-weight:600}
+  .question{margin:14px 0 0;font-size:21px;font-weight:700;border-left:6px solid var(--accent);padding:6px 0 6px 12px}
+  .rule{margin:8px 0 0;color:var(--ink-soft);font-size:16px}
+  nav.pairs{display:flex;gap:8px;margin:16px 0 0;flex-wrap:wrap}
+  .pair-btn{min-height:48px;flex:1;min-width:180px;border:2px solid var(--line);background:var(--bg);color:var(--ink);
+    border-radius:8px;padding:10px;font-size:18px;font-weight:800;cursor:pointer}
+  .pair-btn:hover{border-color:var(--accent)}
+  .pair-btn.picked{border-color:var(--accent);background:var(--accent-soft)}
+  .pair-btn.done{border-color:var(--good)}
+  .pair-btn .done-mark{color:var(--good)}
+  .specimens{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:18px 0 0}
+  @media (max-width:700px){ .specimens{grid-template-columns:1fr} }
+  .spec h2{margin:0;font-size:19px;font-weight:800}
+  .spec .when{color:var(--ink-soft);font-size:15px;font-weight:700;margin:0 0 6px}
+  .spec ul{margin:0;padding:0;list-style:none}
+  .spec li{padding:9px 2px;border-bottom:1.5px solid var(--line);font-size:18px}
+  .art{position:relative;border-radius:8px;overflow:hidden;margin:0 0 10px;line-height:0}
+  .art svg{width:100%;height:auto;display:block}
+  .dirt{position:absolute;top:0;left:0;right:0;z-index:2;
+    background:repeating-linear-gradient(135deg,#4a3b28 0 14px,#3d2f1e 14px 28px);
+    clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),92% 100%,84% calc(100% - 8px),76% 100%,68% calc(100% - 10px),60% 100%,52% calc(100% - 8px),44% 100%,36% calc(100% - 10px),28% 100%,20% calc(100% - 8px),12% 100%,6% calc(100% - 9px),0 100%)}
+  .dirt span{position:absolute;top:10px;left:0;right:0;text-align:center;color:#d8c49a;
+    font-size:14px;font-weight:800;letter-spacing:2px;line-height:1.2}
+  .dig-status{margin:10px 0 0;font-size:16px;font-weight:800}
+  #digBtn{margin-top:8px;width:100%;min-height:52px;border:none;border-radius:8px;padding:12px 20px;
+    font-size:19px;font-weight:900;cursor:pointer;background:var(--accent);color:#fff}
+  @media (prefers-color-scheme: dark){ #digBtn{color:#0d1524} }
+  .check-zone{margin:22px 0 0;border-top:2px solid var(--line);padding-top:16px}
+  .check-zone label{font-size:17px;font-weight:800;display:block;margin-bottom:8px}
+  .lock-note{margin:0 0 10px;color:var(--ink-soft);font-size:16px;font-weight:700}
+  .check-row{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  #countInput{width:130px;min-height:52px;border:2px solid var(--line);border-radius:8px;padding:10px;font-size:22px;font-weight:800;color:var(--ink);background:var(--bg);text-align:center}
+  #countInput:disabled{opacity:.45}
+  #checkBtn{min-height:52px;border:none;border-radius:8px;padding:12px 26px;font-size:20px;font-weight:900;cursor:pointer;background:var(--accent);color:#fff}
+  #checkBtn:disabled{opacity:.45;cursor:not-allowed}
+  @media (prefers-color-scheme: dark){ #checkBtn{color:#0d1524} }
+  #result{margin:16px 0 0;display:none}
+  #result.show{display:block}
+  #result .hero{font-size:44px;font-weight:900;line-height:1.1}
+  #result .hero.right{color:var(--good)}
+  #result .hero.wrong{color:var(--bad);font-size:26px}
+  #result .shared-list{font-size:18px;margin:6px 0 0}
+  .progress{margin:20px 0 0;font-size:17px;font-weight:800}
+  #finish{display:none;margin:22px 0 0;border-top:2px solid var(--line);padding-top:16px}
+  #finish.show{display:block}
+  #finish h2{margin:0 0 6px;font-size:21px}
+  .sum-row{border:2px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 10px}
+  .sum-head{font-size:18px;font-weight:800}
+  .sum-count{color:var(--good);font-size:22px;font-weight:900}
+  .sum-list{font-size:16px;margin:2px 0 0}
+  #nameInput{width:100%;max-width:420px;min-height:52px;border:2px solid var(--line);border-radius:8px;padding:11px;font-size:18px;font-weight:700;color:var(--ink);background:var(--bg)}
+  #sendBtn{min-height:52px;border:none;border-radius:8px;padding:12px 24px;font-size:19px;font-weight:900;cursor:pointer;background:var(--accent);color:#fff;margin-top:10px}
+  @media (prefers-color-scheme: dark){ #sendBtn{color:#0d1524} }
+  #sendBtn:disabled{background:#7a8699;cursor:not-allowed}
+  .send-status{font-size:16px;font-weight:700;margin:8px 0 0}
+  .send-status.err{color:var(--bad)}
+  #resetBtn{margin-top:18px;min-height:48px;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:8px 16px;font-size:16px;font-weight:800;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <h1>The Fossil Match Lab</h1>
+    <p>CK Unit 6 Lesson 1 · Natural Selection and Common Ancestry · MS-LS4-1</p>
+  </header>
+
+  <p class="question">How many body features does a fossil share with the living thing that matches it?</p>
+  <p class="rule"><b>Counting rule:</b> a feature counts only when it appears on <b>both</b> lists as the same body part. Count it once. The fossil starts buried in the rock: press <b>DIG</b> to uncover its features, two at a time. The living thing stays in view the whole time, so you can compare as you dig. Type your count first, then let the lab check it.</p>
+
+  <nav class="pairs" id="pairNav"></nav>
+
+  <div class="specimens">
+    <div class="spec">
+      <h2 id="fossilName"></h2>
+      <p class="when">THE FOSSIL - lived long ago</p>
+      <div class="art" id="fossilArt"></div>
+      <ul id="fossilList"></ul>
+      <p class="dig-status" id="digStatus"></p>
+      <button id="digBtn">DIG - uncover more of the fossil</button>
+    </div>
+    <div class="spec">
+      <h2 id="modernName"></h2>
+      <p class="when">ALIVE TODAY</p>
+      <div class="art" id="modernArt"></div>
+      <ul id="modernList"></ul>
+    </div>
+  </div>
+
+  <div class="check-zone">
+    <label for="countInput">Your count of shared features for this pair:</label>
+    <p class="lock-note" id="lockNote">Dig until the fossil is fully uncovered. Then count the shared features.</p>
+    <div class="check-row">
+      <input id="countInput" type="number" min="0" max="9" inputmode="numeric" autocomplete="off">
+      <button id="checkBtn">CHECK MY COUNT</button>
+    </div>
+    <div id="result" aria-live="polite"></div>
+  </div>
+
+  <p class="progress" id="progress">Pairs finished: 0 of 3</p>
+
+  <div id="finish">
+    <h2>You finished all three pairs.</h2>
+    <div id="summary"></div>
+    <p style="margin:0 0 8px">Write your counts in Part 2 of your worksheet first. Then send your name so your teacher can see you finished.</p>
+    <input id="nameInput" type="text" placeholder="Enter your name" autocomplete="name">
+    <br>
+    <button id="sendBtn">SEND TO TEACHER</button>
+    <p class="send-status" id="sendStatus"></p>
+  </div>
+
+  <button id="resetBtn">Start over</button>
+</div>
+
+<script>
+var PAIRS = [
+  { id:"A", label:"Pair A - Penguins",
+    fossilName:"Ancient penguin (fossil)", modernName:"Penguin alive today",
+    fossil:["Beak","Flippers - wings that do not fly","Webbed feet","Feathers","Very tall body"],
+    modern:["Beak","Flippers - wings that do not fly","Webbed feet","Feathers","Short body"] },
+  { id:"B", label:"Pair B - Horses",
+    fossilName:"Ancient horse (fossil)", modernName:"Horse alive today",
+    fossil:["Teeth that grind plants","Long face","Tail","Legs with three toes","Small body - the size of a dog"],
+    modern:["Teeth that grind plants","Long face","Tail","Legs ending in one hoof","Large body"] },
+  { id:"C", label:"Pair C - Ferns",
+    fossilName:"Ancient fern (fossil)", modernName:"Fern alive today",
+    fossil:["Divided leaves (fronds)","Leaflets in two rows","Spores under the leaflets","Stems","Roots","Tree-sized trunk"],
+    modern:["Divided leaves (fronds)","Leaflets in two rows","Spores under the leaflets","Stems","Roots","Low plant near the ground"] }
+];
+
+/* Matched comparison drawings: same viewBox, same pose and orientation on
+   both sides of a pair, so each shared feature can be found on both.
+   Fossil = rock tones in a rock slab. Modern = living tones, fully visible. */
+var ART = {
+  A: {
+    fossil:
+'<svg viewBox="0 0 220 170" role="img" aria-label="Drawing of the ancient penguin fossil in rock">' +
+'<rect x="0" y="0" width="220" height="170" fill="#2b241c"/>' +
+'<path d="M18 26 l20 10 M186 128 l14 -10 M30 140 l16 -6" stroke="#5a4c36" stroke-width="2" fill="none"/>' +
+'<line x1="14" y1="150" x2="206" y2="150" stroke="#8a7a5c" stroke-width="3"/>' +
+'<ellipse cx="112" cy="88" rx="31" ry="60" fill="#4a3d2a" stroke="#cdb287" stroke-width="3"/>' +
+'<ellipse cx="112" cy="92" rx="19" ry="46" fill="none" stroke="#8a7a5c" stroke-width="2" stroke-dasharray="5 5"/>' +
+'<circle cx="112" cy="24" r="15" fill="#4a3d2a" stroke="#cdb287" stroke-width="3"/>' +
+'<polygon points="97,24 76,29 97,34" fill="#cdb287"/>' +
+'<circle cx="105" cy="22" r="2.5" fill="#2b241c"/>' +
+'<path d="M138 62 q16 32 8 62 q-13 -10 -13 -36 z" fill="#4a3d2a" stroke="#cdb287" stroke-width="3"/>' +
+'<path d="M84 66 q-5 12 -1 24 M83 98 q-4 10 0 20" stroke="#cdb287" stroke-width="2.5" fill="none"/>' +
+'<path d="M94 147 L81 153 Q87 151 93 155 Q99 151 105 153 Z M128 147 L117 153 Q123 151 129 155 Q135 151 141 153 Z" fill="#cdb287" fill-opacity="0.35" stroke="#cdb287" stroke-width="2"/>' +
+'<path d="M94 148 l-13 5 M94 148 l-1 7 M94 148 l11 5 M128 148 l-11 5 M128 148 l1 7 M128 148 l13 5" stroke="#cdb287" stroke-width="3" fill="none"/>' +
+'</svg>',
+    modern:
+'<svg viewBox="0 0 220 170" role="img" aria-label="Drawing of a penguin alive today">' +
+'<rect x="0" y="0" width="220" height="170" fill="#1d2b3a"/>' +
+'<line x1="14" y1="150" x2="206" y2="150" stroke="#5b7a99" stroke-width="3"/>' +
+'<ellipse cx="112" cy="104" rx="33" ry="43" fill="#2e4a66" stroke="#a9c6e8" stroke-width="3"/>' +
+'<ellipse cx="112" cy="112" rx="20" ry="31" fill="#e8f1fa"/>' +
+'<circle cx="112" cy="44" r="17" fill="#2e4a66" stroke="#a9c6e8" stroke-width="3"/>' +
+'<polygon points="95,44 74,50 95,55" fill="#f0a13c"/>' +
+'<circle cx="104" cy="42" r="2.5" fill="#0d1524"/>' +
+'<path d="M140 84 q16 22 8 46 q-13 -8 -13 -26 z" fill="#2e4a66" stroke="#a9c6e8" stroke-width="3"/>' +
+'<path d="M84 86 q-4 10 0 20 M84 110 q-4 8 -1 16" stroke="#a9c6e8" stroke-width="2.5" fill="none"/>' +
+'<path d="M94 146 L81 152 Q87 150 93 154 Q99 150 105 152 Z M128 146 L117 152 Q123 150 129 154 Q135 150 141 152 Z" fill="#f0a13c" stroke="#f0a13c" stroke-width="2"/>' +
+'<path d="M94 147 l-13 5 M94 147 l-1 7 M94 147 l11 5 M128 147 l-11 5 M128 147 l1 7 M128 147 l13 5" stroke="#f0a13c" stroke-width="3" fill="none"/>' +
+'</svg>'
+  },
+  B: {
+    fossil:
+'<svg viewBox="0 0 220 170" role="img" aria-label="Drawing of the ancient horse fossil in rock">' +
+'<rect x="0" y="0" width="220" height="170" fill="#2b241c"/>' +
+'<path d="M16 120 l18 -8 M192 30 l14 10" stroke="#5a4c36" stroke-width="2" fill="none"/>' +
+'<line x1="14" y1="152" x2="206" y2="152" stroke="#8a7a5c" stroke-width="3"/>' +
+'<g transform="translate(18,14) scale(0.86)" fill="#4a3d2a" stroke="#cdb287" stroke-width="3">' +
+'<ellipse cx="122" cy="76" rx="54" ry="25"/>' +
+'<polygon points="78,58 60,32 46,38 60,74"/>' +
+'<polygon points="60,32 30,44 26,54 44,58 62,48"/>' +
+'<polygon points="58,32 54,19 65,27" fill="#cdb287"/>' +
+'<path d="M62 34 q-7 14 -3 30" stroke="#8a7a5c" fill="none"/>' +
+'<path d="M31 49 l0 6 M37 51 l0 6" stroke="#e8dfc8" stroke-width="2" fill="none"/>' +
+'<circle cx="48" cy="42" r="2.5" fill="#2b241c" stroke="none"/>' +
+'<path d="M82 96 L82 138 M158 96 L158 138" stroke-width="7" fill="none"/>' +
+'<path d="M82 138 l-8 9 M82 138 l0 10 M82 138 l8 9 M158 138 l-8 9 M158 138 l0 10 M158 138 l8 9" stroke-width="3" fill="none"/>' +
+'<path d="M174 60 q20 8 16 48" stroke="#8a7a5c" stroke-width="6" fill="none"/>' +
+'</g></svg>',
+    modern:
+'<svg viewBox="0 0 220 170" role="img" aria-label="Drawing of a horse alive today">' +
+'<rect x="0" y="0" width="220" height="170" fill="#22301f"/>' +
+'<line x1="14" y1="152" x2="206" y2="152" stroke="#5f7a4d" stroke-width="3"/>' +
+'<g fill="#7a5230" stroke="#e6c188" stroke-width="3">' +
+'<ellipse cx="122" cy="76" rx="54" ry="25"/>' +
+'<polygon points="78,58 60,32 46,38 60,74"/>' +
+'<polygon points="60,32 30,44 26,54 44,58 62,48"/>' +
+'<polygon points="58,32 54,19 65,27" fill="#54381c"/>' +
+'<path d="M62 34 q-7 14 -3 30" stroke="#54381c" fill="none"/>' +
+'<path d="M31 49 l0 6 M37 51 l0 6" stroke="#e8e2d2" stroke-width="2" fill="none"/>' +
+'<circle cx="48" cy="42" r="2.5" fill="#14100a" stroke="none"/>' +
+'<path d="M82 96 L82 140 M158 96 L158 140" stroke="#e6c188" stroke-width="7" fill="none"/>' +
+'<path d="M174 60 q20 8 16 48" stroke="#54381c" stroke-width="6" fill="none"/>' +
+'</g>' +
+'<rect x="73" y="140" width="18" height="8" fill="#26221e"/>' +
+'<rect x="149" y="140" width="18" height="8" fill="#26221e"/>' +
+'</svg>'
+  },
+  C: {
+    fossil:
+'<svg viewBox="0 0 220 170" role="img" aria-label="Drawing of the ancient fern fossil in rock">' +
+'<rect x="0" y="0" width="220" height="170" fill="#2b241c"/>' +
+'<path d="M14 40 l18 8 M196 96 l12 -8" stroke="#5a4c36" stroke-width="2" fill="none"/>' +
+'<line x1="14" y1="150" x2="206" y2="150" stroke="#8a7a5c" stroke-width="3"/>' +
+'<rect x="101" y="102" width="18" height="48" fill="#4a3d2a" stroke="#cdb287" stroke-width="3"/>' +
+'<g stroke="#cdb287" stroke-width="3" fill="none">' +
+'<path d="M110 150 C108 112 108 70 110 34"/>' +
+'<path d="M110 46 q-26 -13 -46 -7 M110 46 q26 -13 46 -7"/>' +
+'<path d="M110 74 q-33 -7 -52 9 M110 74 q33 -7 52 9"/>' +
+'<path d="M110 100 q-35 -1 -50 17 M110 100 q35 -1 50 17"/>' +
+'</g>' +
+'<g stroke="#cdb287" stroke-width="2" fill="none">' +
+'<path d="M95 42 l-3 -7 M95 42 l-5 5 M82 40 l-3 -7 M82 40 l-5 5 M125 42 l3 -7 M125 42 l5 5 M138 40 l3 -7 M138 40 l5 5"/>' +
+'<path d="M92 70 l-3 -7 M92 70 l-5 5 M76 71 l-3 -7 M76 71 l-5 5 M128 70 l3 -7 M128 70 l5 5 M144 71 l3 -7 M144 71 l5 5"/>' +
+'<path d="M90 96 l-3 -7 M90 96 l-5 5 M72 99 l-3 -7 M72 99 l-5 5 M130 96 l3 -7 M130 96 l5 5 M148 99 l3 -7 M148 99 l5 5"/>' +
+'<path d="M110 150 q-6 7 -14 9 M110 150 q0 8 -2 12 M110 150 q6 7 14 9"/>' +
+'</g>' +
+'<g fill="#e3d3a0"><circle cx="78" cy="112" r="2.4"/><circle cx="90" cy="116" r="2.4"/><circle cx="130" cy="116" r="2.4"/><circle cx="142" cy="112" r="2.4"/></g>' +
+'</svg>',
+    modern:
+'<svg viewBox="0 0 220 170" role="img" aria-label="Drawing of a fern alive today">' +
+'<rect x="0" y="0" width="220" height="170" fill="#1e2b1a"/>' +
+'<line x1="14" y1="148" x2="206" y2="148" stroke="#5f7a4d" stroke-width="3"/>' +
+'<g stroke="#7fc96b" stroke-width="3" fill="none">' +
+'<path d="M110 148 C108 122 108 94 110 62"/>' +
+'<path d="M110 72 q-26 -13 -46 -7 M110 72 q26 -13 46 -7"/>' +
+'<path d="M110 98 q-33 -7 -52 9 M110 98 q33 -7 52 9"/>' +
+'<path d="M110 122 q-35 -1 -50 15 M110 122 q35 -1 50 15"/>' +
+'</g>' +
+'<g stroke="#7fc96b" stroke-width="2" fill="none">' +
+'<path d="M95 68 l-3 -7 M95 68 l-5 5 M82 66 l-3 -7 M82 66 l-5 5 M125 68 l3 -7 M125 68 l5 5 M138 66 l3 -7 M138 66 l5 5"/>' +
+'<path d="M92 94 l-3 -7 M92 94 l-5 5 M76 95 l-3 -7 M76 95 l-5 5 M128 94 l3 -7 M128 94 l5 5 M144 95 l3 -7 M144 95 l5 5"/>' +
+'<path d="M90 118 l-3 -7 M90 118 l-5 5 M72 121 l-3 -7 M72 121 l-5 5 M130 118 l3 -7 M130 118 l5 5 M148 121 l3 -7 M148 121 l5 5"/>' +
+'<path d="M110 148 q-6 7 -14 9 M110 148 q0 8 -2 12 M110 148 q6 7 14 9"/>' +
+'</g>' +
+'<g fill="#d8e86b"><circle cx="78" cy="134" r="2.4"/><circle cx="90" cy="138" r="2.4"/><circle cx="130" cy="138" r="2.4"/><circle cx="142" cy="134" r="2.4"/></g>' +
+'</svg>'
+  }
+};
+
+function sharedFeatures(pair){
+  return pair.fossil.filter(function(f){ return pair.modern.indexOf(f) !== -1; });
+}
+var current = 0;
+var done = {};       // pair id -> {count: n, trials: n}
+var trials = {};     // pair id -> attempts
+var dug = {};        // pair id -> fossil features uncovered so far
+
+function uncovered(pair){
+  if (done[pair.id]) return pair.fossil.length;
+  return Math.min(dug[pair.id] || 0, pair.fossil.length);
+}
+function renderNav(){
+  var nav = document.getElementById("pairNav");
+  nav.innerHTML = "";
+  PAIRS.forEach(function(pair, i){
+    var b = document.createElement("button");
+    b.className = "pair-btn" + (i===current ? " picked" : "") + (done[pair.id] ? " done" : "");
+    b.innerHTML = pair.label + (done[pair.id] ? ' <span class="done-mark">- done</span>' : "");
+    b.addEventListener("click", function(){ current = i; renderPair(); });
+    nav.appendChild(b);
+  });
+}
+function fillList(el, items){
+  el.innerHTML = "";
+  items.forEach(function(txt){
+    var li = document.createElement("li"); li.textContent = txt; el.appendChild(li);
+  });
+}
+function renderPair(){
+  var pair = PAIRS[current];
+  document.getElementById("fossilName").textContent = pair.fossilName;
+  document.getElementById("modernName").textContent = pair.modernName;
+  var n = uncovered(pair);
+  var total = pair.fossil.length;
+  var full = n >= total;
+  // Fossil picture, covered by rock that recedes with each dig.
+  var art = document.getElementById("fossilArt");
+  art.innerHTML = ART[pair.id].fossil +
+    (full ? "" : '<div class="dirt" id="dirtCover" style="height:' + Math.round((total - n) / total * 100) + '%"><span>IN THE ROCK</span></div>');
+  document.getElementById("modernArt").innerHTML = ART[pair.id].modern;
+  // Only the uncovered fossil features are listed; the modern list is whole.
+  fillList(document.getElementById("fossilList"), pair.fossil.slice(0, n));
+  fillList(document.getElementById("modernList"), pair.modern);
+  document.getElementById("digStatus").textContent = full
+    ? "Fossil fully uncovered - now count the shared features."
+    : "Uncovered: " + n + " of " + total + " features.";
+  document.getElementById("digBtn").style.display = full ? "none" : "";
+  // The count stays locked until the fossil is fully uncovered.
+  document.getElementById("countInput").disabled = !full;
+  document.getElementById("checkBtn").disabled = !full;
+  document.getElementById("lockNote").style.display = full ? "none" : "";
+  document.getElementById("countInput").value = done[pair.id] ? done[pair.id].count : "";
+  var res = document.getElementById("result");
+  if (done[pair.id]) { showRight(pair); } else { res.className=""; res.innerHTML=""; }
+  renderNav(); renderProgress();
+}
+document.getElementById("digBtn").addEventListener("click", function(){
+  var pair = PAIRS[current];
+  var n = uncovered(pair);
+  if (n >= pair.fossil.length) return;
+  dug[pair.id] = Math.min(pair.fossil.length, n + 2);
+  renderPair();
+});
+function showRight(pair){
+  var shared = sharedFeatures(pair);
+  var res = document.getElementById("result");
+  res.className = "show";
+  res.innerHTML = '<div class="hero right">' + shared.length + ' shared features</div>' +
+    '<p class="shared-list">Shared: ' + shared.join("; ") + '.</p>' +
+    '<p class="shared-list">Copy the count and the shared features into Part 2 of your worksheet.</p>';
+}
+function renderSummary(){
+  document.getElementById("summary").innerHTML = PAIRS.map(function(p){
+    var shared = sharedFeatures(p);
+    return '<div class="sum-row"><div class="sum-head">' + p.label +
+      ': <span class="sum-count">' + shared.length + ' shared features</span></div>' +
+      '<div class="sum-list">Shared: ' + shared.join("; ") + '.</div></div>';
+  }).join("");
+}
+function renderProgress(){
+  var n = Object.keys(done).length;
+  document.getElementById("progress").textContent = "Pairs finished: " + n + " of 3";
+  if (n === 3) renderSummary();
+  document.getElementById("finish").className = (n===3 ? "show" : "");
+}
+document.getElementById("checkBtn").addEventListener("click", function(){
+  var pair = PAIRS[current];
+  var raw = document.getElementById("countInput").value;
+  var val = parseInt(raw, 10);
+  var res = document.getElementById("result");
+  trials[pair.id] = (trials[pair.id] || 0) + 1;
+  if (isNaN(val)) {
+    res.className = "show";
+    res.innerHTML = '<div class="hero wrong">Type your count first, then check.</div>';
+    return;
+  }
+  var correct = sharedFeatures(pair).length;
+  if (val === correct) {
+    done[pair.id] = { count: val, trials: trials[pair.id] };
+    showRight(pair); renderNav(); renderProgress();
+  } else {
+    res.className = "show";
+    res.innerHTML = '<div class="hero wrong">Not yet - recount.</div>' +
+      '<p class="shared-list">A shared feature must appear on <b>both</b> lists as the same body part. Go down one list at a time and check each feature against the other list.</p>';
+  }
+});
+document.getElementById("sendBtn").addEventListener("click", function(){
+  var status = document.getElementById("sendStatus");
+  var name = document.getElementById("nameInput").value.replace(/^\s+|\s+$/g, "");
+  if (!name) { status.textContent = "Type your name first."; status.className = "send-status err"; document.getElementById("nameInput").focus(); return; }
+  var totalTrials = Object.keys(trials).reduce(function(s,k){ return s + trials[k]; }, 0);
+  var summary = PAIRS.map(function(p){ return p.id + ":" + (done[p.id] ? done[p.id].count : "?"); }).join(", ");
+  var payload = { timestamp: new Date().toISOString(), name: name, combos: "Shared counts " + summary, trials: totalTrials };
+  if (window.google && google.script && google.script.run) {
+    status.textContent = "Sending..."; status.className = "send-status";
+    google.script.run
+      .withSuccessHandler(function(){ status.textContent = "Sent. Your teacher has your finish record."; document.getElementById("sendBtn").disabled = true; document.getElementById("nameInput").disabled = true; })
+      .withFailureHandler(function(err){ status.textContent = "Send failed: " + err.message + " - tell your teacher."; status.className = "send-status err"; })
+      .recordCompletion(payload);
+  } else {
+    status.textContent = "This copy of the lab is not connected to your teacher's sheet. Show your teacher your finished screen instead.";
+    status.className = "send-status err";
+  }
+});
+document.getElementById("resetBtn").addEventListener("click", function(){
+  done = {}; trials = {}; dug = {}; current = 0;
+  document.getElementById("nameInput").value = "";
+  document.getElementById("nameInput").disabled = false;
+  document.getElementById("sendBtn").disabled = false;
+  document.getElementById("sendStatus").textContent = "";
+  renderPair();
+});
+renderPair();
+</script>
+</body>
+</html>
